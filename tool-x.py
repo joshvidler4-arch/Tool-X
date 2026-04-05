@@ -4,6 +4,32 @@
 # Update: 08/03/2026
 #>> TOOL-X MAIN
 
+# >> AUTHOR GPG KEY (RSA-3072, 2026-04-05)
+AUTHOR_GPG_KEY = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+mQGNBGnSUOYBDADZXl+9gOtG0OIq9clIhlTVIoDWmFcubsocEU16QI6OZGoOj4jg
+NugiBT0Zq9KKz05jWVW6XHpgxBzb0vcnx3bVyTYnE1gY0MxkCyoevRDlbnZEB28b
+ZYR4yY8s0fXi3qakoz/lOZuJnUSetQtP+neksyWR7baLj/SYBeeQ6LFjpw112c3p
+ifNv6Tg8EW756OYyY3A+qiVyYKSAMXJ3sa5Q6qxjWJwGOZbyVqyApfVzbpwNo1IV
+t7+MgFWQkocy5mr4780ol7YWrDgU6Sm01DbmF9tza6MIkwoIM9vnKCNJfWUIbSXb
+NjR1GIghhoJIwhrGJktwLd8ewLOz5Aj89XeGKXtExG1O3Lz7aaaJUl41ZNBZmCd4
+GiTxjx4rQbdLVmy8DrfrD/iPXCn7owNQK7IEEI3QNwFvt5HOdyzdV7JwZKKm0L3x
+L/J5xo6v809Ou9RiVCbiUVYXy9l0uYqE5XnssXVk5aWt6CB8stBv2TN1t5N/bnpl
+cCaJRY2ZklFt5HkAEQEAAbQ4am9zaCAocHVibGljIGtleSBzaWduZWQgd2VsY29t
+ZSkgPGpvc2h2aWRsZXI0QGdtYWlsLmNvbT6JAc4EEwEKADgWIQTQnUJk0ymi5Wv3
+S0B6EOpZ7GCc8QUCadJQ5gIbAwULCQgHAgYVCgkICwIEFgIDAQIeAQIXgAAKCRB6
+EOpZ7GCc8Q5KDACIX81RsIQOW0xiEHX7QiCXcRfEMi4Y2OaaxYroB3amseLNaIgS
+xeAudHcRZcpOVZsV0Hsu0+JgblncOT+aB0infAH01LoG69OrhF8Y8OmMEUr9za7u
+2WyX75gE3nOD6Wxy7DfwYVPqCDMsMGuI0V7zfbK5DZrYTgsSF+JfwuSMn3+PeyNc
+GyvMTRCucvakVUAF4gY9ZI5QcwQDH0tjxWiZCQu89b6m94vTlETfw1U88/l0ggha
+aaPGEoyptx9qlZiiIBRdrGO6HSQb56hAxfMT0bf3Jqzn56k+hSjB4PGmdoD5NsNk
+wqAbFhSOxjq4rNYFzgbj4pInmcW4Ww+CNFYo4GlhoPZ+WhUeWFUFljot71SX0Bmf
+6ffsZnhKTTRFR8KzEhu4kRqvrgGZutxTJVud3WnkYmeyhrrDgZu1Jnpw9r9DSnt6
+pp1mHYZ9YbjrKaPY34UzBoREeClKSlQ8VjSrey451jxbqtQVxurYHUxrUPTpIEnD
+4/BuiNHEur8H82E=
+=6s0L
+-----END PGP PUBLIC KEY BLOCK-----"""
+
 import os
 import sys
 import json
@@ -389,6 +415,53 @@ class ToolX:
                 else:
                     console.print(f"[red]Invalid Tool ID or Command: {user_input}[/]"); time.sleep(1)
 
+    def manual_install_menu(self):
+        """Allows manual installation of a tool by entering a custom URL."""
+        self.display_banner()
+        console.print("[bold yellow]<> Manual Install <>[/]")
+        console.print("[dim]Install any tool directly by providing its Git repository URL.[/]\n")
+
+        tool_name = Prompt.ask("[cyan]Enter a name for the tool[/]").strip()
+        if not tool_name:
+            console.print("[red]Tool name cannot be empty.[/]"); time.sleep(1); return
+
+        repo_url = Prompt.ask("[cyan]Enter the Git repository URL[/]").strip()
+        if not repo_url:
+            console.print("[red]URL cannot be empty.[/]"); time.sleep(1); return
+
+        # Build a temporary tool entry and install it directly
+        import subprocess, shutil as _shutil
+        from core.installation_logic import INSTALL_DEST_DIR, LOG_FILE, INSTALLED_TOOLS_FILE, run_command, CURRENT_OS
+
+        safe_name = tool_name.replace(" ", "_").replace("/", "_")
+        install_dir = os.path.join(INSTALL_DEST_DIR, safe_name)
+
+        if os.path.exists(install_dir):
+            cmd, desc = f"git -C {install_dir} pull", f"Updating {tool_name}..."
+        else:
+            cmd, desc = f"git clone {repo_url} {install_dir}", f"Cloning {tool_name}..."
+
+        success, _ = run_command(cmd, desc)
+        if not success:
+            console.print(f"[bold red]Installation Failed![/] Check logs in {LOG_FILE}")
+        else:
+            if CURRENT_OS != "windows":
+                run_command(f"find {install_dir} -type f -name '*.sh' -exec chmod +x {{}} \\;", "Setting permissions...")
+                run_command(f"find {install_dir} -type f -name '*.py' -exec chmod +x {{}} \\;", "Setting permissions...")
+
+            msg = Text()
+            msg.append(f" {tool_name} Installed Successfully!\n", style="bold green")
+            msg.append(f" Folder Path: {install_dir}\n", style="cyan")
+            console.print(Panel(msg, title="Success", border_style="green"))
+
+            try:
+                with open(INSTALLED_TOOLS_FILE, "a", encoding='utf-8') as f:
+                    f.write(f"{tool_name}|{install_dir}\n")
+            except Exception as e:
+                console.print(f"[yellow]Warning: Failed to save history: {e}[/]")
+
+        Prompt.ask("\n[green]Press Enter to return to Main Menu[/]")
+
     def main_menu(self):
         while True:
             self.display_banner()
@@ -419,6 +492,7 @@ class ToolX:
             utils_table.add_column("ID", style="bold cyan", justify="right", width=6)
             utils_table.add_column("Option", style="bold white")
             
+            utils_table.add_row("[95]", " Manual Install")
             utils_table.add_row("[96]", " Show All Tools")  
             utils_table.add_row("[97]", " Smart Search")
             utils_table.add_row("[98]", " Uninstall Tools")
@@ -440,6 +514,7 @@ class ToolX:
                 console.print("[green]Goodbye! Thank you for using Tool-X.[/]")
                 sys.exit()
             elif choice.lower() == 'f': self.show_favorites()
+            elif choice == '95': self.manual_install_menu()
             elif choice == '96': self.show_all_tools()
             elif choice == '97': self.search_tool_menu()
             elif choice == '98': self.uninstall_menu()
